@@ -47,7 +47,7 @@ Llama Guardian 是一个轻量级的 GPU 显卡资源调度器，部署在上游
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourname/llama-guardian.git
+git clone https://github.com/linziyao/llama-guardian.git
 cd llama-guardian
 
 # 安装依赖
@@ -64,19 +64,99 @@ cp config.example.yaml config.yaml
 vim config.yaml
 ```
 
+配置示例（当前服务器实际配置）：
+
+```yaml
+llama_server:
+  binary_path: "/root/gpufree-data/linziyao/.local/bin/llama-server"
+  host: "127.0.0.1"
+  port: 11435                           # 11434 已被 Ollama 占用
+  context_size: 4096
+
+models:
+  - name: "glm-4.5-air"
+    path: "/root/gpufree-data/linziyao/models/Q4_K_M/GLM-4.5-Air-Q4_K_M-00001-of-00002.gguf"
+
+vram:
+  size_multiplier: 1.4
+  safety_margin_mb: 2000
+
+cleanup:
+  idle_timeout_seconds: 300
+  check_interval_seconds: 10
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+```
+
 ### 启动
 
 ```bash
 # 前台运行（开发/调试）
+cd ~/projects/tools/llama\ guardian/
 python -m src.main
 
 # 或指定配置文件
 python -m src.main --config /path/to/config.yaml
 
 # 或通过环境变量覆盖
-export LLAMA_SERVER__BINARY_PATH=/usr/local/bin/llama-server
-export SERVER__PORT=8080
+export LLAMA_SERVER__BINARY_PATH=/root/gpufree-data/linziyao/.local/bin/llama-server
+export SERVER__PORT=8000
 python -m src.main
+```
+
+### 请求示例
+
+**使用 curl 测试聊天补全（非流式）：**
+
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "glm-4.5-air",
+    "messages": [{"role": "user", "content": "你好，请用一句话介绍你自己"}],
+    "max_tokens": 200
+  }'
+```
+
+**使用 curl 测试流式输出（SSE）：**
+
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "glm-4.5-air",
+    "messages": [{"role": "user", "content": "写一首关于春天的短诗"}],
+    "stream": true
+  }'
+```
+
+**查看健康状态和 GPU 显存：**
+
+```bash
+curl http://localhost:8000/health | python3 -m json.tool
+```
+
+**列出可用模型：**
+
+```bash
+curl http://localhost:8000/v1/models | python3 -m json.tool
+```
+
+**使用 Python OpenAI SDK：**
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
+
+response = client.chat.completions.create(
+    model="glm-4.5-air",
+    messages=[{"role": "user", "content": "你好"}],
+    max_tokens=100
+)
+print(response.choices[0].message.content)
 ```
 
 ## 配置说明
