@@ -1,0 +1,46 @@
+# Llama Guardian 配置文件模板
+# 复制为 config.yaml 后根据实际情况修改
+
+# llama-server 配置
+llama_server:
+  binary_path: "./llama-server"         # llama-server 可执行文件路径
+  host: "127.0.0.1"                     # llama-server 监听地址
+  port: 11434                           # llama-server 监听端口
+  default_model_path: null              # 默认模型路径（可选，如果不设则请求中必须指定 model）
+  context_size: 4096                    # 上下文窗口大小
+  extra_args: []                        # 额外的 llama-server 参数，如 ["--mlock", "--no-mmap"]
+
+# 模型列表
+# name: 请求中的 model 字段值
+# path: 模型文件绝对路径
+models:
+  - name: "qwen2.5-72b"
+    path: "/data/models/Qwen2.5-72B-Instruct-Q4_K_M.gguf"
+  # - name: "llama3-70b"
+  #   path: "/data/models/Meta-Llama-3-70B-Instruct-Q4_K_M.gguf"
+
+# 显存估算
+vram:
+  # 模型文件大小 × 此倍率 = 预估所需显存（含 KV cache、上下文等开销）
+  size_multiplier: 1.4
+  # 安全边际：额外保留的显存量（MB），给其他程序留空间
+  safety_margin_mb: 2000
+
+# 闲置清理
+cleanup:
+  idle_timeout_seconds: 300             # 闲置 N 秒后关闭 llama-server
+  check_interval_seconds: 10            # 检查间隔
+
+# 并发控制
+concurrency:
+  max_concurrent_requests: 0            # 最大并发数，0 = 不限流（纯透传）
+
+# Guardian 服务器配置
+server:
+  host: "0.0.0.0"                       # Guardian 监听地址
+  port: 8000                            # Guardian 监听端口
+
+# 日志配置
+logging:
+  level: "INFO"                         # DEBUG / INFO / WARNING / ERROR
+  format: "json"                        # json 或 text

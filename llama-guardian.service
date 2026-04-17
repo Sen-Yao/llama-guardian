@@ -1,0 +1,21 @@
+[Unit]
+Description=Llama Guardian - GPU 资源调度中间层
+After=network.target
+
+[Service]
+Type=simple
+# 修改为你的实际路径
+WorkingDirectory=/home/youruser/llama-guardian
+ExecStart=/usr/bin/python3 -m src.main --config config.yaml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# 环境变量（可选，会覆盖 config.yaml 中的值）
+# Environment=LLAMA_SERVER__BINARY_PATH=/usr/local/bin/llama-server
+# Environment=CLEANUP__IDLE_TIMEOUT_SECONDS=600
+# Environment=LOGGING__LEVEL=DEBUG
+
+[Install]
+WantedBy=default.target
