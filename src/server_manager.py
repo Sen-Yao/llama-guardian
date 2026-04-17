@@ -107,7 +107,7 @@ class ServerManager:
         try:
             # 构建 env，确保 LD_LIBRARY_PATH 包含 llama-server 的库目录
             env = os.environ.copy()
-            bin_dir = os.path.dirname(self.config.llama_server.binary_path)
+            bin_dir = os.path.dirname(self.config.llama_server
             ld_path = env.get("LD_LIBRARY_PATH", "")
             if bin_dir not in ld_path:
                 env["LD_LIBRARY_PATH"] = f"{bin_dir}:{ld_path}".rstrip(":")
