@@ -4,6 +4,7 @@ FastAPI 应用，负责请求代理、显存预判、流式响应等
 """
 
 import asyncio
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -36,8 +37,8 @@ request_stats = {
     "total_inference_time_ms": 0.0,
 }
 
-# 并发控制信号量
-concurrency_semaphore: asyncio.Semaphore | None = None
+# 全局启动锁（防止并发启动 llama-server）
+_start_lock = asyncio.Lock()
 
 
 def setup_logging(config: AppConfig):
@@ -67,7 +68,7 @@ def setup_logging(config: AppConfig):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    global config, server_manager, vram_estimator, cleanup_worker, concurrency_semaphore
+    global config, server_manager, vram_estimator, cleanup_worker
 
     # 加载配置
     config = load_config()
@@ -81,12 +82,7 @@ async def lifespan(app: FastAPI):
     server_manager = ServerManager(config)
     vram_estimator = VramEstimator(config)
 
-    # 并发控制
-    if config.concurrency.max_concurrent_requests > 0:
-        concurrency_semaphore = asyncio.Semaphore(config.concurrency.max_concurrent_requests)
-        logger.info(f"并发限制: {config.concurrency.max_concurrent_requests}")
-    else:
-        logger.info("并发限制: 无限制（纯透传模式）")
+    logger.info("并发限制: 透传模式（由 llama-server 自行管理并发）")
 
     # 初始化清理守护线程
     cleanup_worker = CleanupWorker(
@@ -136,23 +132,6 @@ async def proxy_v1_request(request: Request, path: str):
     return await _handle_proxy(request, path)
 
 
-@app.api_route(
-    "/{path:path}",
-    methods=["GET", "POST", "PUT", "DELETE"],
-)
-async def proxy_root_request(request: Request, path: str):
-    """
-    代理其他路径的请求（排除 Guardian 自身的管理端点）
-    """
-    # 排除 Guardian 自身端点
-    if path in ("health", "metrics", "status", "docs", "openapi.json", "redoc"):
-        return None  # 让 FastAPI 自己处理
-
-    # 如果是 /v1/ 开头的路径，交给上面的路由处理
-    if path.startswith("v1/"):
-        return await _handle_proxy(request, path[3:])
-
-    return await _handle_proxy(request, path)
 
 
 async def _handle_proxy(request: Request, path: str):
@@ -167,7 +146,6 @@ async def _handle_proxy(request: Request, path: str):
     body_json = {}
     if body:
         try:
-            import json
             body_json = json.loads(body)
         except Exception:
             pass
@@ -221,37 +199,25 @@ async def _handle_proxy(request: Request, path: str):
                 detail=f"Insufficient VRAM. Required: ~{required_vram} MB, Available: {available_vram} MB."
             )
 
-    # --- 4. 并发控制 ---
-    if concurrency_semaphore:
-        if concurrency_semaphore._value <= 0:
-            request_stats["rejected_503"] += 1
-            raise HTTPException(
-                status_code=503,
-                detail="Too many concurrent requests. Please try again later."
-            )
+    # --- 4. 确保 llama-server 运行 ---
+    async with _start_lock:
+        if not server_manager.is_running or server_manager.current_model != model_name:
+            success = await server_manager.start(model_name, model_path)
+            if not success:
+                request_stats["failed_requests"] += 1
+                raise HTTPException(
+                    status_code=503,
+                    detail="Failed to start llama-server. VRAM fragmentation may have caused OOM."
+                )
 
-    # --- 5. 确保 llama-server 运行 ---
-    if not server_manager.is_running or server_manager.current_model != model_name:
-        async with asyncio.Lock():
-            # 双重检查（防止并发启动）
-            if not server_manager.is_running or server_manager.current_model != model_name:
-                success = await server_manager.start(model_name, model_path)
-                if not success:
-                    request_stats["failed_requests"] += 1
-                    raise HTTPException(
-                        status_code=503,
-                        detail="Failed to start llama-server. VRAM fragmentation may have caused OOM."
-                    )
-
-    # --- 6. 更新活跃时间 ---
+    # --- 5. 更新活跃时间 ---
     cleanup_worker.touch()
 
-    # --- 7. 转发请求到 llama-server ---
+    # --- 6. 转发请求到 llama-server ---
     is_stream = body_json.get("stream", False)
+    target_url = f"{server_manager.base_url}/v1/{path}"
 
     try:
-        target_url = f"{server_manager.base_url}/v1/{path}" if not path.startswith("v1") else f"{server_manager.base_url}/{path}"
-
         if is_stream:
             return await _stream_proxy(request, target_url, body)
         else:
