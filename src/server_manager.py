@@ -4,6 +4,7 @@ llama-server 进程管理模块
 """
 
 import asyncio
+import os
 import time
 import logging
 import subprocess
@@ -104,10 +105,18 @@ class ServerManager:
         logger.info(f"启动 llama-server: {' '.join(cmd)}")
 
         try:
+            # 构建 env，确保 LD_LIBRARY_PATH 包含 llama-server 的库目录
+            env = os.environ.copy()
+            bin_dir = os.path.dirname(self.config.llama_server.binary_path)
+            ld_path = env.get("LD_LIBRARY_PATH", "")
+            if bin_dir not in ld_path:
+                env["LD_LIBRARY_PATH"] = f"{bin_dir}:{ld_path}".rstrip(":")
+
             self._process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env=env,
             )
         except FileNotFoundError:
             logger.error(f"llama-server 可执行文件未找到: {self.config.llama_server.binary_path}")
