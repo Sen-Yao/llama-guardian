@@ -3,7 +3,6 @@
 根据模型文件大小自动推算运行所需显存
 """
 
-import os
 import logging
 from pathlib import Path
 

@@ -4,7 +4,6 @@
 
 import os
 import tempfile
-import pytest
 
 from src.config import AppConfig, load_config, _deep_merge
 

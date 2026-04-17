@@ -121,7 +121,6 @@ def _load_env_overrides() -> dict:
     格式: LLAMA_SERVER__BINARY_PATH=/usr/bin/llama-server
     双下划线分隔层级
     """
-    env_prefix = "LLAMA_GUARDIAN_"
     overrides = {}
 
     # 环境变量到配置路径的映射
@@ -176,7 +175,7 @@ def _load_env_overrides() -> dict:
 def _parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(description="Llama Guardian - GPU 资源调度中间层")
-    parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
+    parser.add_argument("--config", type=str, default=None, help="配置文件路径")
     parser.add_argument("--llama-server.binary-path", type=str, dest="llama_binary_path")
     parser.add_argument("--llama-server.host", type=str, dest="llama_host")
     parser.add_argument("--llama-server.port", type=int, dest="llama_port")
@@ -184,7 +183,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--server.port", type=int, dest="server_port")
     parser.add_argument("--cleanup.idle-timeout-seconds", type=int, dest="idle_timeout")
     parser.add_argument("--logging.level", type=str, dest="log_level")
-    return parser.parse_args()
+    return parser.parse_known_args()[0]
 
 
 def _args_to_overrides(args: argparse.Namespace) -> dict:
