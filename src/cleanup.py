@@ -54,11 +54,7 @@ class CleanupWorker:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._run, daemon=True, name="cleanup-worker")
         self._thread.start()
-        logger.info(
-            f"清理守护线程已启动，"
-            f"闲置超时={self.config.idle_timeout_seconds}秒，"
-            f"检查间隔={self.config.check_interval_seconds}秒"
-        )
+        logger.info(f"清理守护线程已启动，闲置超时={self.config.idle_timeout_seconds}秒，检查间隔={self.config.check_interval_seconds}秒")
 
     def stop(self):
         """停止清理守护线程"""
@@ -83,10 +79,7 @@ class CleanupWorker:
 
             idle_seconds = time.time() - self._last_active_time
             if idle_seconds > self.config.idle_timeout_seconds:
-                logger.info(
-                    f"llama-server 已闲置 {idle_seconds:.0f} 秒 "
-                    f"(阈值: {self.config.idle_timeout_seconds}秒)，正在关闭..."
-                )
+                logger.info(f"llama-server 已闲置 {idle_seconds:.0f} 秒 (阈值: {self.config.idle_timeout_seconds}秒)，正在关闭...")
                 try:
                     self._loop.run_until_complete(self._stop_callback())
                     logger.info("闲置清理完成，llama-server 已关闭，显存已释放")

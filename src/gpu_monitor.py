@@ -13,6 +13,7 @@ logger = logging.getLogger("llama-guardian")
 @dataclass
 class GPUInfo:
     """单张 GPU 的信息"""
+
     index: int
     name: str
     memory_total_mb: int

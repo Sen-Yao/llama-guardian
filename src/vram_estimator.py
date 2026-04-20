@@ -95,10 +95,12 @@ class VramEstimator:
         for model in self.config.models:
             file_size_mb = self._get_model_file_size_mb(model.path)
             required_vram = int(file_size_mb * self.config.vram.size_multiplier) + self.config.vram.safety_margin_mb if file_size_mb > 0 else -1
-            result.append({
-                "name": model.name,
-                "path": model.path,
-                "file_size_mb": file_size_mb,
-                "estimated_vram_mb": required_vram,
-            })
+            result.append(
+                {
+                    "name": model.name,
+                    "path": model.path,
+                    "file_size_mb": file_size_mb,
+                    "estimated_vram_mb": required_vram,
+                }
+            )
         return result

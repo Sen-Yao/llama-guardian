@@ -46,9 +46,7 @@ def setup_logging(config: AppConfig):
     log_level = getattr(logging, config.logging.level.upper(), logging.INFO)
     logging.basicConfig(
         level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        if config.logging.format == "text"
-        else None,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s" if config.logging.format == "text" else None,
     )
 
     if config.logging.format == "json":
@@ -56,9 +54,7 @@ def setup_logging(config: AppConfig):
             from pythonjsonlogger import json as json_logger
 
             handler = logging.StreamHandler()
-            formatter = json_logger.JsonFormatter(
-                "%(asctime)s %(name)s %(levelname)s %(message)s"
-            )
+            formatter = json_logger.JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
             handler.setFormatter(formatter)
             logging.root.handlers = [handler]
         except ImportError:
@@ -75,8 +71,7 @@ async def lifespan(app: FastAPI):
     setup_logging(config)
 
     logger.info("Llama Guardian 启动中...")
-    logger.info(f"配置: server={config.server.host}:{config.server.port}, "
-                f"llama-server={config.llama_server.host}:{config.llama_server.port}")
+    logger.info(f"配置: server={config.server.host}:{config.server.port}, llama-server={config.llama_server.host}:{config.llama_server.port}")
 
     # 初始化组件
     server_manager = ServerManager(config)
@@ -120,6 +115,7 @@ app = FastAPI(
 
 # ============ 请求代理 ============
 
+
 @app.api_route(
     "/v1/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE"],
@@ -130,8 +126,6 @@ async def proxy_v1_request(request: Request, path: str):
     支持 OpenAI 兼容的 API（/v1/chat/completions, /v1/completions 等）
     """
     return await _handle_proxy(request, path)
-
-
 
 
 async def _handle_proxy(request: Request, path: str):
@@ -162,28 +156,19 @@ async def _handle_proxy(request: Request, path: str):
 
     if not model_name:
         request_stats["failed_requests"] += 1
-        raise HTTPException(
-            status_code=400,
-            detail="请求中缺少 'model' 字段，且未配置默认模型"
-        )
+        raise HTTPException(status_code=400, detail="请求中缺少 'model' 字段，且未配置默认模型")
 
     # --- 2. 检查模型是否存在 ---
     model_path = vram_estimator.get_model_path(model_name)
     if not model_path:
         request_stats["failed_requests"] += 1
-        raise HTTPException(
-            status_code=404,
-            detail=f"未找到模型: {model_name}。可用模型: {[m.name for m in config.models]}"
-        )
+        raise HTTPException(status_code=404, detail=f"未找到模型: {model_name}。可用模型: {[m.name for m in config.models]}")
 
     # --- 3. 显存预判 ---
     required_vram = vram_estimator.estimate_required_vram(model_name)
     if required_vram < 0:
         request_stats["failed_requests"] += 1
-        raise HTTPException(
-            status_code=500,
-            detail=f"无法估算模型 {model_name} 的显存需求"
-        )
+        raise HTTPException(status_code=500, detail=f"无法估算模型 {model_name} 的显存需求")
 
     available_vram = get_total_free_vram()
 
@@ -191,13 +176,8 @@ async def _handle_proxy(request: Request, path: str):
     if not (server_manager.is_running and server_manager.current_model == model_name):
         if available_vram < required_vram:
             request_stats["rejected_503"] += 1
-            logger.warning(
-                f"显存不足: 需要 ~{required_vram}MB, 可用 {available_vram}MB"
-            )
-            raise HTTPException(
-                status_code=503,
-                detail=f"Insufficient VRAM. Required: ~{required_vram} MB, Available: {available_vram} MB."
-            )
+            logger.warning(f"显存不足: 需要 ~{required_vram}MB, 可用 {available_vram}MB")
+            raise HTTPException(status_code=503, detail=f"Insufficient VRAM. Required: ~{required_vram} MB, Available: {available_vram} MB.")
 
     # --- 4. 确保 llama-server 运行 ---
     async with _start_lock:
@@ -205,10 +185,7 @@ async def _handle_proxy(request: Request, path: str):
             success = await server_manager.start(model_name, model_path)
             if not success:
                 request_stats["failed_requests"] += 1
-                raise HTTPException(
-                    status_code=503,
-                    detail="Failed to start llama-server. VRAM fragmentation may have caused OOM."
-                )
+                raise HTTPException(status_code=503, detail="Failed to start llama-server. VRAM fragmentation may have caused OOM.")
 
     # --- 5. 更新活跃时间 ---
     cleanup_worker.touch()
@@ -224,16 +201,10 @@ async def _handle_proxy(request: Request, path: str):
             return await _normal_proxy(request, target_url, body)
     except httpx.ConnectError:
         request_stats["failed_requests"] += 1
-        raise HTTPException(
-            status_code=503,
-            detail="Backend llama-server is unreachable. It may have crashed during inference."
-        )
+        raise HTTPException(status_code=503, detail="Backend llama-server is unreachable. It may have crashed during inference.")
     except httpx.TimeoutException:
         request_stats["failed_requests"] += 1
-        raise HTTPException(
-            status_code=504,
-            detail="Backend llama-server request timed out."
-        )
+        raise HTTPException(status_code=504, detail="Backend llama-server request timed out.")
     finally:
         elapsed_ms = (time.time() - request_start_time) * 1000
         request_stats["total_inference_time_ms"] += elapsed_ms
@@ -258,6 +229,7 @@ async def _normal_proxy(request: Request, target_url: str, body: bytes) -> JSONR
 
 async def _stream_proxy(request: Request, target_url: str, body: bytes) -> StreamingResponse:
     """流式请求代理（SSE）"""
+
     async def stream_generator():
         async with httpx.AsyncClient(timeout=300.0) as client:
             headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
@@ -283,6 +255,7 @@ async def _stream_proxy(request: Request, target_url: str, body: bytes) -> Strea
 
 # ============ Guardian 管理端点 ============
 
+
 @app.get("/health")
 async def health():
     """健康检查 + GPU 显存状态"""
@@ -304,11 +277,7 @@ async def health():
 async def metrics():
     """请求统计"""
     total = request_stats["total_requests"]
-    avg_latency = (
-        request_stats["total_inference_time_ms"] / total
-        if total > 0
-        else 0
-    )
+    avg_latency = request_stats["total_inference_time_ms"] / total if total > 0 else 0
 
     return {
         "total_requests": total,

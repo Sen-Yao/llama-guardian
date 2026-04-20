@@ -62,12 +62,18 @@ class ServerManager:
 
         cmd = [
             cfg.binary_path,
-            "-m", model_path,
-            "--split-mode", "row",
-            "--n-gpu-layers", "999",
-            "-c", str(cfg.context_size),
-            "--host", cfg.host,
-            "--port", str(cfg.port),
+            "-m",
+            model_path,
+            "--split-mode",
+            "row",
+            "--n-gpu-layers",
+            "999",
+            "-c",
+            str(cfg.context_size),
+            "--host",
+            cfg.host,
+            "--port",
+            str(cfg.port),
         ]
 
         # 如果有多个 GPU，使用 --tensor-split 按剩余显存比例分配
