@@ -4,10 +4,10 @@
 """
 
 import asyncio
-import time
 import logging
 import threading
-from typing import Optional, Callable, Awaitable
+import time
+from typing import Awaitable, Callable, Optional
 
 from .config import CleanupConfig
 

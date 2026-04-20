@@ -5,7 +5,7 @@
 import os
 import tempfile
 
-from src.config import AppConfig, load_config, _deep_merge
+from src.config import AppConfig, _deep_merge, load_config
 
 
 def test_deep_merge():

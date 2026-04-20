@@ -3,8 +3,8 @@ GPU 显存监控模块
 通过 nvidia-smi 实时获取各显卡的显存信息
 """
 
-import subprocess
 import logging
+import subprocess
 from dataclasses import dataclass
 
 logger = logging.getLogger("llama-guardian")

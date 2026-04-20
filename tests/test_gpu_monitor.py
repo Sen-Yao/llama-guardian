@@ -3,8 +3,9 @@ GPU 监控模块测试
 注意：在无 GPU 环境下，部分测试需要 mock nvidia-smi
 """
 
-from unittest.mock import patch, MagicMock
-from src.gpu_monitor import GPUInfo, get_gpu_info, get_total_free_vram, get_gpu_count
+from unittest.mock import MagicMock, patch
+
+from src.gpu_monitor import GPUInfo, get_gpu_count, get_gpu_info, get_total_free_vram
 
 
 def test_gpu_info_to_dict():

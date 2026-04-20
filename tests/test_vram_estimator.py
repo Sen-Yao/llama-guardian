@@ -4,9 +4,10 @@
 
 import os
 import tempfile
+
 import pytest
 
-from src.config import AppConfig, VramConfig, ModelConfig
+from src.config import AppConfig, ModelConfig, VramConfig
 from src.vram_estimator import VramEstimator
 
 
